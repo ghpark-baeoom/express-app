@@ -107,7 +107,7 @@ npm ci --omit=dev
 npm run build
 
 # 4. 무중단 재시작 (⭐ 핵심)
-pm2 reload ecosystem.config.mjs
+pm2 reload ecosystem.config.cjs
 ```
 
 ### 3. PM2 명령어
@@ -157,6 +157,7 @@ pm2 kill
 ```
 
 **차이점:**
+
 - `pm2 delete all`: 앱만 삭제, PM2 데몬은 유지
 - `pm2 kill`: PM2 자체를 완전히 종료 (전체 초기화)
 
@@ -171,6 +172,7 @@ PM2 클러스터 모드를 사용하여 무중단 배포를 구현합니다:
    - **다운타임 0초!**
 
 **주의:**
+
 - `pm2 restart`: 모든 인스턴스 동시 재시작 → 다운타임 발생
 - `pm2 reload`: 하나씩 순차 재시작 → 무중단 ⭐
 
@@ -222,10 +224,12 @@ docker compose down
 ## 에러 핸들링
 
 ### 비정상 종료 (exit 1)
+
 - `uncaughtException`: 캐치되지 않은 예외
 - `unhandledRejection`: 처리되지 않은 Promise rejection
 
 ### 정상 종료 (exit 0)
+
 - `SIGINT`: Ctrl+C로 수동 종료
 - `SIGTERM`: 시스템 종료 요청
 - Graceful Shutdown: 10초 타임아웃 후 강제 종료
