@@ -13,11 +13,22 @@ app.use((req, res, next) => {
     const timestamp = new Date().toISOString();
     // Get original client IP from X-Forwarded-For or fallback to req.ip
     const forwardedFor = req.headers["x-forwarded-for"];
-    const clientIp = forwardedFor
+    let clientIp = forwardedFor
       ? Array.isArray(forwardedFor)
         ? forwardedFor[0]
         : forwardedFor.split(",")[0].trim()
       : req.ip || req.socket.remoteAddress;
+
+    // Convert IPv6 to IPv4 if applicable
+    if (clientIp) {
+      // Remove IPv6 prefix (::ffff:) for IPv4-mapped addresses
+      clientIp = clientIp.replace(/^::ffff:/, "");
+      // Convert ::1 (IPv6 localhost) to 127.0.0.1 (IPv4 localhost)
+      if (clientIp === "::1") {
+        clientIp = "127.0.0.1";
+      }
+    }
+
     console.log(
       `[${timestamp}] ${clientIp} - ${req.method} ${req.path} ${res.statusCode} - ${duration}ms`
     );
