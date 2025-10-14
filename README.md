@@ -71,16 +71,19 @@ npm ci
 # 3. TypeScript 빌드
 npm run build
 
-# 4. PM2로 앱 실행
+# 4. (선택사항) Port 80 사용 시 Node.js에 권한 부여
+sudo setcap 'cap_net_bind_service=+ep' $(which node)
+
+# 5. PM2로 앱 실행
 pm2 start ecosystem.config.cjs
 
-# 5. 로그 확인 (정상 작동 확인)
+# 6. 로그 확인 (정상 작동 확인)
 pm2 logs
 
-# 6. 현재 프로세스 목록 저장
+# 7. 현재 프로세스 목록 저장
 pm2 save
 
-# 7. 서버 재부팅 시 자동 시작 설정
+# 8. 서버 재부팅 시 자동 시작 설정
 pm2 startup
 # 위 명령어 실행 후 출력되는 명령어를 복사하여 실행 (sudo 권한 필요)
 ```
@@ -249,14 +252,28 @@ docker compose down
 기본 포트는 3000이며, `.env` 파일이나 환경변수로 변경 가능합니다:
 
 ```bash
-PORT=80
+PORT=3000
 ```
 
-**참고:** Port 80 사용 시 root 권한 필요:
+### Port 80 사용하기
+
+Port 80을 사용하려면 Node.js에 권한을 부여해야 합니다:
 
 ```bash
-sudo PORT=80 pm2 start ecosystem.config.mjs
+# 1. Node.js에 포트 바인딩 권한 부여 (최초 1회만)
+sudo setcap 'cap_net_bind_service=+ep' $(which node)
+
+# 2. .env 파일 수정
+echo "PORT=80" > .env
+
+# 3. PM2 시작 (sudo 불필요)
+pm2 start ecosystem.config.cjs
+
+# 확인
+pm2 logs
 ```
+
+**참고:** 권한 부여는 서버당 1회만 실행하면 됩니다.
 
 ## 라이선스
 
