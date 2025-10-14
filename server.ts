@@ -14,15 +14,19 @@ app.use((req, res, next) => {
     // Get original client IP from X-Forwarded-For or fallback to req.ip
     const forwardedFor = req.headers["x-forwarded-for"];
     const clientIp = forwardedFor
-      ? (Array.isArray(forwardedFor) ? forwardedFor[0] : forwardedFor.split(",")[0].trim())
+      ? Array.isArray(forwardedFor)
+        ? forwardedFor[0]
+        : forwardedFor.split(",")[0].trim()
       : req.ip || req.socket.remoteAddress;
-    console.log(`[${timestamp}] ${clientIp} - ${req.method} ${req.path} ${res.statusCode} - ${duration}ms`);
+    console.log(
+      `[${timestamp}] ${clientIp} - ${req.method} ${req.path} ${res.statusCode} - ${duration}ms`
+    );
   });
   next();
 });
 
 app.get("/", (_req, res) => {
-  res.send("안녕하세요!!");
+  res.send("안녕!");
 });
 
 app.get("/health", (_req, res) => {
