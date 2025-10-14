@@ -65,14 +65,14 @@ npm run build
 git clone https://github.com/ghpark-baeoom/express-app.git
 cd express-app
 
-# 2. 의존성 설치
+# 2. 의존성 설치 (빌드를 위해 devDependencies 포함)
 npm ci
 
 # 3. TypeScript 빌드
 npm run build
 
 # 4. PM2로 앱 실행
-pm2 start ecosystem.config.mjs
+pm2 start ecosystem.config.cjs
 
 # 5. 로그 확인 (정상 작동 확인)
 pm2 logs

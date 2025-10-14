@@ -8,7 +8,7 @@ git pull origin main
 
 # 2. Install dependencies
 echo "📦 Installing dependencies..."
-npm ci --omit=dev
+npm ci
 
 # 3. Build TypeScript
 echo "🔨 Building TypeScript..."
