@@ -3,6 +3,7 @@
 GitHub Actions를 사용한 자동 배포 시스템 구축 가이드입니다.
 
 ## 목차
+
 - [개요](#개요)
 - [아키텍처](#아키텍처)
 - [사전 준비](#사전-준비)
@@ -14,12 +15,14 @@ GitHub Actions를 사용한 자동 배포 시스템 구축 가이드입니다.
 ## 개요
 
 **배포 플로우:**
+
 ```
 로컬 개발 → Git Push (main) → GitHub Actions 트리거
 → Docker 이미지 빌드 → ECR 푸시 → EC2 SSH 접속 → 배포
 ```
 
 **장점:**
+
 - ✅ 완전 자동화된 배포
 - ✅ Docker를 통한 일관된 환경
 - ✅ ECR로 이미지 버전 관리 및 롤백 가능
@@ -30,8 +33,8 @@ GitHub Actions를 사용한 자동 배포 시스템 구축 가이드입니다.
 
 ```
 ┌─────────────┐     ┌──────────────────┐     ┌─────────┐     ┌─────────┐
-│  로컬 개발   │ ──> │ GitHub Actions   │ ──> │   ECR   │ ──> │   EC2   │
-│  (MacOS)    │     │  (CI/CD 빌드)    │     │ (이미지) │     │ (배포)  │
+│  로컬 개발   │ ──>  │ GitHub Actions   │ ──> │   ECR   │ ──> │   EC2   │
+│  (MacOS)    │     │  (CI/CD 빌드)     │     │ (이미지)  │     │ (배포)   │
 └─────────────┘     └──────────────────┘     └─────────┘     └─────────┘
 ```
 
@@ -54,6 +57,7 @@ aws ecr create-repository \
 ```
 
 또는 AWS 콘솔에서:
+
 1. ECR 서비스 접속
 2. "리포지토리 생성" 클릭
 3. 이름: `express-app`
@@ -63,6 +67,7 @@ aws ecr create-repository \
 ### 2. IAM 사용자 생성 (GitHub Actions용)
 
 **필요한 권한:**
+
 - `AmazonEC2ContainerRegistryPowerUser` (ECR 푸시/풀)
 - 또는 커스텀 정책:
 
@@ -89,6 +94,7 @@ aws ecr create-repository \
 ```
 
 **IAM 사용자 생성 단계:**
+
 1. AWS IAM → 사용자 → 사용자 추가
 2. 이름: `github-actions-user`
 3. 액세스 키 - 프로그래밍 방식 액세스
@@ -98,6 +104,7 @@ aws ecr create-repository \
 ### 3. EC2 보안 그룹 설정
 
 Docker 사용 시 필요한 포트:
+
 - **80**: HTTP (또는 원하는 포트)
 - **22**: SSH (GitHub Actions 접속용)
 
@@ -123,19 +130,20 @@ GitHub 저장소 → Settings → Secrets and variables → Actions → New repo
 
 ### 필수 Secrets
 
-| Secret 이름 | 설명 | 예시 |
-|------------|------|-----|
-| `AWS_ACCESS_KEY_ID` | IAM 사용자 액세스 키 | `AKIAIOSFODNN7EXAMPLE` |
+| Secret 이름             | 설명                 | 예시                                       |
+| ----------------------- | -------------------- | ------------------------------------------ |
+| `AWS_ACCESS_KEY_ID`     | IAM 사용자 액세스 키 | `AKIAIOSFODNN7EXAMPLE`                     |
 | `AWS_SECRET_ACCESS_KEY` | IAM 사용자 시크릿 키 | `wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY` |
-| `AWS_REGION` | AWS 리전 | `ap-northeast-2` |
-| `ECR_REPOSITORY` | ECR 리포지토리 이름 | `express-app` |
-| `EC2_HOST` | EC2 Public IP | `43.201.64.12` |
-| `EC2_USERNAME` | EC2 사용자명 | `ubuntu` |
-| `EC2_SSH_KEY` | EC2 SSH Private Key | `-----BEGIN RSA PRIVATE KEY-----...` |
+| `AWS_REGION`            | AWS 리전             | `ap-northeast-2`                           |
+| `ECR_REPOSITORY`        | ECR 리포지토리 이름  | `express-app`                              |
+| `EC2_HOST`              | EC2 Public IP        | `43.201.64.12`                             |
+| `EC2_USERNAME`          | EC2 사용자명         | `ubuntu`                                   |
+| `EC2_SSH_KEY`           | EC2 SSH Private Key  | `-----BEGIN RSA PRIVATE KEY-----...`       |
 
 ### EC2_SSH_KEY 생성 방법
 
 **방법 1: 기존 키 사용**
+
 ```bash
 # 로컬에서 기존 SSH 키 복사
 cat ~/.ssh/your-ec2-key.pem
@@ -143,6 +151,7 @@ cat ~/.ssh/your-ec2-key.pem
 ```
 
 **방법 2: 새 키 생성**
+
 ```bash
 # EC2에서 새 키 생성
 ssh ubuntu@[EC2-IP]
@@ -161,6 +170,7 @@ cat github_actions_key
 ## 배포 플로우
 
 ### 1. Git Push
+
 ```bash
 git add .
 git commit -m "Update feature"
@@ -190,6 +200,7 @@ git push origin main
 ### 3. EC2에서 자동 배포
 
 `scripts/deploy-docker.sh`가 실행되어:
+
 1. AWS ECR 로그인
 2. 최신 이미지 pull
 3. 기존 컨테이너 중지
@@ -241,11 +252,13 @@ docker compose up -d
 ### 1. ECR 로그인 실패
 
 **에러:**
+
 ```
 Error: Cannot perform an interactive login from a non TTY device
 ```
 
 **해결:**
+
 ```yaml
 # deploy.yml에서 확인
 - name: Login to Amazon ECR
@@ -257,11 +270,13 @@ Error: Cannot perform an interactive login from a non TTY device
 ### 2. SSH 접속 실패
 
 **에러:**
+
 ```
 Permission denied (publickey)
 ```
 
 **해결:**
+
 1. EC2_SSH_KEY가 올바른지 확인
 2. EC2 ~/.ssh/authorized_keys에 공개키 추가 확인
 3. SSH 키 형식 확인 (BEGIN/END 포함)
@@ -269,11 +284,13 @@ Permission denied (publickey)
 ### 3. Docker 이미지 pull 실패
 
 **에러:**
+
 ```
 pull access denied, repository does not exist
 ```
 
 **해결:**
+
 ```bash
 # EC2에서 ECR 로그인 확인
 aws ecr get-login-password --region ap-northeast-2 | \
@@ -286,11 +303,13 @@ aws ecr describe-repositories
 ### 4. 포트 충돌
 
 **에러:**
+
 ```
 Bind for 0.0.0.0:80 failed: port is already allocated
 ```
 
 **해결:**
+
 ```bash
 # 기존 컨테이너 확인 및 중지
 docker ps -a
@@ -309,7 +328,7 @@ pm2 delete all
 # .github/workflows/deploy-dev.yml
 on:
   push:
-    branches: [ dev ]
+    branches: [dev]
 
 env:
   IMAGE_TAG: dev
@@ -322,7 +341,7 @@ env:
 # .github/workflows/deploy.yml
 on:
   push:
-    branches: [ main ]
+    branches: [main]
 
 env:
   IMAGE_TAG: latest
@@ -340,6 +359,7 @@ env:
 ## 비용 최적화
 
 - **ECR**: 이미지 lifecycle 정책 설정 (오래된 이미지 자동 삭제)
+
 ```bash
 # 최근 5개 이미지만 유지
 aws ecr put-lifecycle-policy --repository-name express-app --lifecycle-policy-text '{
