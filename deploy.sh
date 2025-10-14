@@ -16,7 +16,7 @@ npm run build
 
 # 4. Reload PM2 (zero-downtime)
 echo "♻️  Reloading PM2 processes..."
-pm2 reload ecosystem.config.mjs
+pm2 reload ecosystem.config.cjs
 
 # 5. Show status
 echo "✅ Deployment complete!"

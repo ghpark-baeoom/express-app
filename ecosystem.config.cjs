@@ -1,4 +1,4 @@
-export default {
+module.exports = {
   apps: [
     {
       name: "express-app", // PM2 프로세스 이름
