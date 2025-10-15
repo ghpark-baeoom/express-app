@@ -37,11 +37,11 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (_req, res) => {
-  res.send("안녕!");
+  res.send("💗HELLO WORLD");
 });
 
 app.get("/health", (_req, res) => {
-  res.status(200).send("OK");
+  res.status(200).send("✅HELATH CHECK OK");
 });
 
 const PORT = process.env.PORT || 3000;
