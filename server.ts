@@ -5,6 +5,17 @@ const app = express();
 // Trust proxy for accurate IP addresses
 app.set("trust proxy", true);
 
+// Remove trailing slashes from URLs (except root "/")
+app.use((req, res, next) => {
+  if (req.path !== "/" && req.path.endsWith("/")) {
+    const query = req.url.slice(req.path.length);
+    const safePath = req.path.slice(0, -1);
+    res.redirect(301, safePath + query);
+  } else {
+    next();
+  }
+});
+
 // Request logging middleware
 app.use((req, res, next) => {
   const start = Date.now();
@@ -37,11 +48,11 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (_req, res) => {
-  res.send("💗HELLO WORLD");
+  res.send("💗 HELLO WORLD");
 });
 
 app.get("/health", (_req, res) => {
-  res.status(200).send("✅HELATH CHECK OK");
+  res.status(200).send("✅ HELATH CHECK SUCCESS");
 });
 
 const PORT = process.env.PORT || 3000;
