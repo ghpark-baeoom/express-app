@@ -1,11 +1,4 @@
-cat <<'EOF' > install-docker.sh
-set -euo pipefail
-
-# 0) 이전 흔적 정리
-sudo rm -f /etc/apt/sources.list.d/docker.list
-sudo rm -f /usr/local/bin/docker-compose /usr/bin/docker-compose || true
-sudo rm -f /etc/apt/keyrings/docker.asc
-sudo mkdir -p /etc/apt/keyrings
+#!/bin/bash
 
 # 1) 기본 패키지
 sudo apt-get update
@@ -36,4 +29,3 @@ fi
 # 7) 버전 출력 (테스트)
 docker --version
 docker compose version
-EOF
