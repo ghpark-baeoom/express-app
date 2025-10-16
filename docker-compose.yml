@@ -14,14 +14,20 @@ services:
     env_file:
       - .env
     networks:
-      - app-network
+      - my-network
     healthcheck:
-      test: ["CMD", "node", "-e", "require('http').get('http://localhost:${PORT:-3000}/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "require('http').get('http://localhost:${PORT:-3000}/health', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})",
+        ]
       interval: 30s
       timeout: 3s
       start_period: 5s
       retries: 3
 
 networks:
-  app-network:
+  my-network:
     driver: bridge
