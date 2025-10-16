@@ -49,6 +49,10 @@ app.get("/", (_req, res) => {
   res.send("💗 HELLO EXPRESS!");
 });
 
+app.get("/hello", (_req, res) => {
+  res.status(200).json({ message: "💗 HELLO EXPRESS FROM JSON!" });
+});
+
 app.get("/health", (_req, res) => {
   res.status(200).send("✅ EXPRESS: HELATH CHECK SUCCESS");
 });
