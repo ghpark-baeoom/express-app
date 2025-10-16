@@ -54,7 +54,7 @@ app.get("/hello", (_req, res) => {
 });
 
 app.get("/health", (_req, res) => {
-  res.status(200).send("✅✅✅ EXPRESS: HELATH CHECK SUCCESS\n");
+  res.status(200).send("⭐️ ✅ EXPRESS: HELATH CHECK SUCCESS\n");
 });
 
 const PORT = process.env.PORT || 3000;
