@@ -2,14 +2,14 @@
 
 set -e
 
-# 스크립트가 있는 디렉토리로 이동
-cd "$(dirname "$0")"
+# 프로젝트 루트로 이동 (scripts 폴더의 상위 디렉토리)
+cd "$(dirname "$0")/.."
 
 echo "🚀 Starting Docker Compose deployment..."
 
 # 1. Pull latest code
 echo "📥 Pulling latest code from git..."
-./git-pull.sh
+git pull origin main
 
 # 2. Rebuild and restart containers (zero-downtime)
 echo "🔨 Building new image and restarting containers..."
