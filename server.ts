@@ -46,18 +46,20 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (_req, res) => {
-  res.send("💗 HELLO WORLD");
+  res.send("💗 HELLO EXPRESS!");
 });
 
 app.get("/health", (_req, res) => {
-  res.status(200).send("✅ HELATH CHECK SUCCESS");
+  res.status(200).send("✅ EXPRESS: HELATH CHECK SUCCESS");
 });
 
 const PORT = process.env.PORT || 3000;
 
 const server = app.listen(PORT, () => {
   console.log(`.env $PORT: ${PORT}`);
-  console.log(`Server is running on http://localhost:${PORT} ✅ [PID: ${process.pid}]`);
+  console.log(
+    `Server is running on http://localhost:${PORT} ✅ [PID: ${process.pid}]`
+  );
 
   // PM2 ready signal (cluster mode)
   if (process.send) {

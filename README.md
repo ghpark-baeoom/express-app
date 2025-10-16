@@ -15,13 +15,26 @@ Node.js + Express + TypeScript로 구성된 웹 애플리케이션입니다.
 
 ```
 express-app/
-├── dist/                    # 빌드된 JavaScript 파일
-├── server.ts               # 메인 서버 파일
-├── ecosystem.config.mjs    # PM2 설정 파일
-├── deploy.sh              # 무중단 배포 스크립트
-├── .env                   # 환경 변수
-├── tsconfig.json          # TypeScript 설정
-├── package.json           # 프로젝트 의존성
+├── dist/                       # 빌드된 JavaScript 파일
+├── scripts/                    # Ubuntu/Debian 배포 스크립트 (apt)
+│   ├── git-pull.sh            # Git 최신 코드 가져오기
+│   ├── install-docker.sh      # Docker 설치 (Ubuntu)
+│   ├── manual-deploy-pm2.sh   # PM2 무중단 배포
+│   ├── manual-deploy-docker.sh # Docker Compose 배포
+│   └── deploy-github-actions.sh # GitHub Actions용 ECR 배포
+├── scripts-dnf/                # Amazon Linux 2023 배포 스크립트 (dnf)
+│   ├── git-pull.sh            # Git 최신 코드 가져오기
+│   ├── install-docker.sh      # Docker 설치 (AL2023)
+│   ├── manual-deploy-pm2.sh   # PM2 무중단 배포
+│   ├── manual-deploy-docker.sh # Docker Compose 배포
+│   └── deploy-github-actions.sh # GitHub Actions용 ECR 배포
+├── server.ts                   # 메인 서버 파일
+├── ecosystem.config.cjs        # PM2 설정 파일
+├── docker-compose.yml          # Docker Compose 설정
+├── Dockerfile                  # Docker 이미지 빌드 설정
+├── .env                        # 환경 변수
+├── tsconfig.json               # TypeScript 설정
+├── package.json                # 프로젝트 의존성
 └── README.md
 ```
 
@@ -65,46 +78,54 @@ npm run build
 git clone https://github.com/ghpark-baeoom/express-app.git
 cd express-app
 
-# 2. 의존성 설치 (빌드를 위해 devDependencies 포함)
+# 2. .env 파일 생성 (프로젝트 루트에)
+cat > .env << 'EOF'
+PORT=3000
+NODE_ENV=production
+EOF
+
+# 3. 의존성 설치 (빌드를 위해 devDependencies 포함)
 npm ci
 
-# 3. TypeScript 빌드
+# 4. TypeScript 빌드
 npm run build
 
-# 4. (선택사항) Port 80 사용 시 Node.js에 권한 부여
+# 5. (선택사항) Port 80 사용 시 Node.js에 권한 부여
 sudo setcap 'cap_net_bind_service=+ep' $(which node)
 
-# 5. PM2로 앱 실행
+# 6. PM2로 앱 실행
 pm2 start ecosystem.config.cjs
 
-# 6. 로그 확인 (정상 작동 확인)
+# 7. 로그 확인 (정상 작동 확인)
 pm2 logs
 
-# 7. 현재 프로세스 목록 저장
+# 8. 현재 프로세스 목록 저장
 pm2 save
 
-# 8. 서버 재부팅 시 자동 시작 설정
+# 9. 서버 재부팅 시 자동 시작 설정
 pm2 startup
 # 위 명령어 실행 후 출력되는 명령어를 복사하여 실행 (sudo 권한 필요)
 ```
 
 ### 2. 무중단 재배포
 
-코드 변경 후 무중단으로 배포하려면:
-
+#### Ubuntu/Debian (apt 기반)
 ```bash
-# 배포 스크립트 실행
-./deploy.sh
+./scripts/manual-deploy-pm2.sh
 ```
 
-또는 수동으로:
+#### Amazon Linux 2023 (dnf 기반)
+```bash
+./scripts-dnf/manual-deploy-pm2.sh
+```
 
+#### 수동 배포
 ```bash
 # 1. 최신 코드 받기
 git pull origin main
 
 # 2. 의존성 설치
-npm ci --omit=dev
+npm ci
 
 # 3. 빌드
 npm run build
@@ -166,20 +187,56 @@ pm2 kill
 
 ## 무중단 배포 원리
 
-PM2 클러스터 모드를 사용하여 무중단 배포를 구현합니다:
+PM2 클러스터 모드와 `wait_ready` 시그널을 사용하여 안전한 무중단 배포를 구현합니다:
 
-1. **2개 이상의 인스턴스 실행** (`instances: 2`)
-2. **`pm2 reload` 사용 시:**
-   - Instance 1 종료 → 빌드 → 재시작 (Instance 2가 요청 처리)
-   - Instance 2 종료 → 빌드 → 재시작 (Instance 1이 요청 처리)
-   - **다운타임 0초!**
+### 1. PM2 설정 (ecosystem.config.cjs)
+```javascript
+{
+  instances: 2,           // 2개 인스턴스 실행
+  exec_mode: "cluster",   // 클러스터 모드
+  wait_ready: true,       // ready 신호 대기
+  listen_timeout: 10000   // 최대 10초 대기
+}
+```
+
+### 2. 서버 시작 시 ready 신호 전송 (server.ts)
+```javascript
+app.listen(PORT, () => {
+  console.log(`Server is running on http://localhost:${PORT} ✅ [PID: ${process.pid}]`);
+
+  // PM2에 ready 신호 전송
+  if (process.send) {
+    process.send("ready");
+  }
+});
+```
+
+### 3. 무중단 배포 흐름
+**`pm2 reload` 사용 시:**
+1. Instance 1 시작 대기 (Instance 2가 요청 처리)
+2. Instance 1이 `ready` 신호 전송
+3. Instance 1 준비 완료 → Instance 2 종료
+4. Instance 2 시작 대기 (Instance 1이 요청 처리)
+5. Instance 2가 `ready` 신호 전송
+6. **다운타임 0초!**
 
 **주의:**
-
 - `pm2 restart`: 모든 인스턴스 동시 재시작 → 다운타임 발생
-- `pm2 reload`: 하나씩 순차 재시작 → 무중단 ⭐
+- `pm2 reload`: 하나씩 순차 재시작 + ready 신호 확인 → 무중단 ⭐
 
 ## Docker 배포
+
+### Docker 설치
+
+#### Ubuntu/Debian
+```bash
+./scripts/install-docker.sh
+```
+
+#### Amazon Linux 2023
+```bash
+./scripts-dnf/install-docker.sh
+```
 
 ### 빌드 및 실행
 
@@ -194,8 +251,19 @@ docker run -p 3000:3000 --env-file .env express-app
 docker run -p 8080:8080 -e PORT=8080 express-app
 ```
 
-### Docker Compose 사용
+### Docker Compose 무중단 배포
 
+#### Ubuntu/Debian
+```bash
+./scripts/manual-deploy-docker.sh
+```
+
+#### Amazon Linux 2023
+```bash
+./scripts-dnf/manual-deploy-docker.sh
+```
+
+#### 수동 배포
 ```bash
 # 빌드 및 시작
 docker compose up -d
@@ -212,6 +280,7 @@ docker compose down
 
 ## 로깅
 
+### 요청 로그 형식
 서버는 다음 형식으로 요청 로그를 출력합니다:
 
 ```
@@ -219,10 +288,19 @@ docker compose down
 ```
 
 - **타임스탬프**: ISO 8601 형식 (UTC)
-- **클라이언트 IP**: X-Forwarded-For 헤더 우선, 없으면 req.ip
+- **클라이언트 IP**: Load Balancer 및 직접 연결 모두 자동 처리
+  - Load Balancer 사용 시: X-Forwarded-For에서 실제 클라이언트 IP 추출
+  - 직접 연결 시: socket.remoteAddress 사용
+  - `trust proxy` 설정으로 안전하게 처리
 - **HTTP 메서드 및 경로**
 - **상태 코드**
 - **응답 시간** (밀리초)
+
+### 서버 시작 로그
+```
+Server is running on http://localhost:3000 ✅ [PID: 12345]
+```
+- PM2 cluster mode에서 각 인스턴스의 PID 확인 가능
 
 ## 에러 핸들링
 
@@ -273,4 +351,46 @@ pm2 start ecosystem.config.cjs
 pm2 logs
 ```
 
-**참고:** (PORT=80 이용 필요시) Node.js에 포트 바인딩 권한 부여 권한 부여는 서버당 1회만 실행하면 됩니다.
+**참고:** (PORT=80 이용 필요시) Node.js에 포트 바인딩 권한 부여는 서버당 1회만 실행하면 됩니다.
+
+## 배포 스크립트 가이드
+
+### scripts/ (Ubuntu/Debian - apt 기반)
+프로젝트 루트에서 실행하세요:
+
+```bash
+# Docker 설치
+./scripts/install-docker.sh
+
+# PM2 무중단 배포
+./scripts/manual-deploy-pm2.sh
+
+# Docker Compose 배포
+./scripts/manual-deploy-docker.sh
+
+# Git 코드 가져오기
+./scripts/git-pull.sh
+```
+
+### scripts-dnf/ (Amazon Linux 2023 - dnf 기반)
+프로젝트 루트에서 실행하세요:
+
+```bash
+# Docker 설치
+./scripts-dnf/install-docker.sh
+
+# PM2 무중단 배포
+./scripts-dnf/manual-deploy-pm2.sh
+
+# Docker Compose 배포
+./scripts-dnf/manual-deploy-docker.sh
+
+# Git 코드 가져오기
+./scripts-dnf/git-pull.sh
+```
+
+**참고:**
+- 모든 스크립트는 프로젝트 루트 기준으로 실행됩니다
+- `.env` 파일은 `$HOME/express-app/.env` 경로에 위치해야 합니다
+  - Ubuntu: `/home/ubuntu/express-app/.env`
+  - Amazon Linux 2023: `/home/ec2-user/express-app/.env`
