@@ -8,7 +8,7 @@ module.exports = {
       autorestart: true, // 프로세스 종료 시 자동 재시작
       watch: false, // 파일 변경 감지 후 자동 재시작 (개발: true, 프로덕션: false)
       max_memory_restart: "1G", // 메모리 사용량이 1GB 초과 시 자동 재시작
-      node_args: "--env-file=/home/ubuntu/express-app/.env", // Node.js 실행 시 전달할 추가 인자 (절대 경로)
+      node_args: `--env-file=${process.env.HOME}/express-app/.env`, // Node.js 실행 시 전달할 추가 인자 (Ubuntu: /home/ubuntu, AL2023: /home/ec2-user)
       // env: {
       //   NODE_ENV: 'production', // 환경 변수 직접 설정 (현재는 .env 파일 사용)
       //   PORT: 80
