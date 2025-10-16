@@ -60,6 +60,11 @@ const PORT = process.env.PORT || 3000;
 const server = app.listen(PORT, () => {
   console.log(`.env $PORT: ${PORT}`);
   console.log(`Server is running on http://localhost:${PORT} ✅`);
+
+  // PM2 ready signal (cluster mode)
+  if (process.send) {
+    process.send("ready");
+  }
 });
 
 // Error Handlers (비정상 종료)
