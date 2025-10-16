@@ -22,13 +22,11 @@ app.use((req, res, next) => {
   res.on("finish", () => {
     const duration = Date.now() - start;
     const timestamp = new Date().toISOString();
-    // Get original client IP from X-Forwarded-For or fallback to req.ip
-    const forwardedFor = req.headers["x-forwarded-for"];
-    let clientIp = forwardedFor
-      ? Array.isArray(forwardedFor)
-        ? forwardedFor[0]
-        : forwardedFor.split(",")[0].trim()
-      : req.ip || req.socket.remoteAddress;
+
+    // Get client IP: req.ip handles both LB and direct connection cases
+    // When behind LB with trust proxy: req.ip extracts from X-Forwarded-For
+    // When direct connection: req.ip returns socket.remoteAddress
+    let clientIp = req.ip || req.socket.remoteAddress || "unknown";
 
     // Convert IPv6 to IPv4 if applicable
     if (clientIp) {
