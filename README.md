@@ -16,6 +16,12 @@ Node.js + Express + TypeScript로 구성된 웹 애플리케이션입니다.
 ```
 express-app/
 ├── dist/                       # 빌드된 JavaScript 파일
+├── nginx/                      # Nginx 설정 파일 (Blue-Green 배포용)
+│   ├── nginx.conf             # Nginx 메인 설정
+│   └── conf.d/                # Upstream 설정
+│       ├── active.conf        # 현재 활성 환경 (blue/green)
+│       ├── blue.conf          # Blue 환경 upstream
+│       └── green.conf         # Green 환경 upstream
 ├── scripts/                    # Ubuntu/Debian 배포 스크립트 (apt)
 │   ├── git-pull.sh            # Git 최신 코드 가져오기
 │   ├── install-docker.sh      # Docker 설치 (Ubuntu)
@@ -25,12 +31,13 @@ express-app/
 ├── scripts-dnf/                # Amazon Linux 2023 배포 스크립트 (dnf)
 │   ├── git-pull.sh            # Git 최신 코드 가져오기
 │   ├── install-docker.sh      # Docker 설치 (AL2023)
+│   ├── deploy-docker-rolling.sh # Blue-Green 무중단 배포 ⭐
 │   ├── manual-deploy-pm2.sh   # PM2 무중단 배포
 │   ├── manual-deploy-docker.sh # Docker Compose 배포
 │   └── deploy-github-actions.sh # GitHub Actions용 ECR 배포
 ├── server.ts                   # 메인 서버 파일
 ├── ecosystem.config.cjs        # PM2 설정 파일
-├── docker-compose.yml          # Docker Compose 설정
+├── docker-compose.yml          # Docker Compose 설정 (Blue-Green)
 ├── Dockerfile                  # Docker 이미지 빌드 설정
 ├── .env                        # 환경 변수
 ├── tsconfig.json               # TypeScript 설정
@@ -277,6 +284,176 @@ docker compose logs -f
 # 중지 및 삭제
 docker compose down
 ```
+
+## Blue-Green Rolling Deployment (무중단 배포)
+
+Blue-Green 배포는 Nginx 리버스 프록시를 통해 두 개의 독립적인 환경(Blue/Green) 간 트래픽을 전환하여 완전한 무중단 배포를 구현합니다.
+
+### 아키텍처
+
+```
+                  ┌─────────────┐
+                  │   Nginx     │ :3000 (외부 접근)
+                  │  (Proxy)    │
+                  └──────┬──────┘
+                         │
+           ┌─────────────┴─────────────┐
+           │ active.conf (blue/green)  │
+           └─────────────┬─────────────┘
+                         │
+        ┌────────────────┴────────────────┐
+        │                                 │
+   ┌────▼────┐                       ┌────▼────┐
+   │  Blue   │ :3001                 │  Green  │ :3002
+   │Container│ (always running)      │Container│ (deploy only)
+   └─────────┘                       └─────────┘
+```
+
+### 특징
+
+- **완전 무중단**: Nginx가 트래픽을 전환하는 동안 서비스 중단 없음
+- **빠른 롤백**: active.conf만 변경하면 이전 환경으로 즉시 복구
+- **안전한 배포**: 새 환경의 health check 통과 후에만 트래픽 전환
+- **리소스 효율**: 배포 시에만 두 환경이 동시 실행
+
+### 배포 프로세스
+
+```bash
+# Amazon Linux 2023
+./scripts-dnf/deploy-docker-rolling.sh
+```
+
+#### 배포 흐름
+
+1. **현재 활성 환경 감지** (active.conf 분석)
+   - Blue가 활성 → Green으로 배포
+   - Green이 활성 → Blue로 배포
+
+2. **새 환경 시작**
+   - 최신 코드 pull
+   - Docker 이미지 빌드
+   - 컨테이너 시작 (기존 환경은 계속 실행)
+
+3. **Health Check**
+   - 새 환경이 정상 작동할 때까지 최대 10회 재시도
+   - 실패 시 자동 롤백 (새 환경 중단)
+
+4. **트래픽 전환**
+   - `active.conf`를 새 환경으로 변경
+   - Nginx 설정 reload (nginx -s reload)
+   - 실패 시 자동 롤백 (이전 환경으로 복구)
+
+5. **이전 환경 정리**
+   - 3초 대기 후 이전 환경 중단
+   - Dangling 이미지 정리
+
+### Docker Compose 설정
+
+```yaml
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "3000:80"  # 외부 접근
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+    depends_on:
+      - express-app-blue
+
+  express-app-blue:
+    container_name: express-app-blue
+    ports:
+      - "3001:3000"  # 직접 접근용 (디버깅)
+    # Blue는 항상 실행 (profile 없음)
+
+  express-app-green:
+    container_name: express-app-green
+    ports:
+      - "3002:3000"  # 직접 접근용 (디버깅)
+    profiles:
+      - green  # 배포 시에만 시작
+```
+
+### Nginx 설정 파일
+
+```nginx
+# nginx/conf.d/blue.conf
+server express-app-blue:3000;
+
+# nginx/conf.d/green.conf
+server express-app-green:3000;
+
+# nginx/conf.d/active.conf (동적으로 변경)
+server express-app-blue:3000;  # 또는 green
+```
+
+### 직접 접근 (디버깅)
+
+```bash
+# Nginx를 통한 접근 (실제 사용자 경로)
+curl http://localhost:3000/health
+
+# Blue 환경 직접 접근
+curl http://localhost:3001/health
+
+# Green 환경 직접 접근 (실행 중일 때만)
+curl http://localhost:3002/health
+```
+
+### 수동 롤백
+
+문제 발견 시 즉시 이전 환경으로 롤백:
+
+```bash
+# 현재 active.conf 확인
+cat nginx/conf.d/active.conf
+
+# Blue로 롤백
+cp nginx/conf.d/blue.conf nginx/conf.d/active.conf
+docker compose exec nginx nginx -s reload
+
+# Green으로 롤백
+cp nginx/conf.d/green.conf nginx/conf.d/active.conf
+docker compose exec nginx nginx -s reload
+```
+
+### 장애 대응
+
+#### Nginx 상태 확인
+```bash
+# Nginx 로그 확인
+docker compose logs nginx
+
+# Nginx 설정 테스트
+docker compose exec nginx nginx -t
+
+# Nginx 재시작
+docker compose restart nginx
+```
+
+#### 환경별 로그 확인
+```bash
+# Blue 환경 로그
+docker compose logs express-app-blue
+
+# Green 환경 로그
+docker compose logs --tail 50 express-app-green
+
+# 실시간 로그
+docker compose logs -f express-app-blue
+```
+
+### PM2 vs Blue-Green 비교
+
+| 특징 | PM2 Reload | Blue-Green (Docker) |
+|------|------------|---------------------|
+| 무중단 배포 | ✅ 지원 | ✅ 지원 |
+| 롤백 속도 | 재배포 필요 | 즉시 (설정 변경) |
+| 리소스 사용 | 낮음 (메모리 2배) | 높음 (배포 시 2배) |
+| 환경 격리 | 프로세스 수준 | 컨테이너 수준 |
+| 복잡도 | 낮음 | 중간 |
+| 추천 사용처 | 단일 서버 | 컨테이너 환경, 빠른 롤백 필요 시 |
 
 ## 로깅
 
