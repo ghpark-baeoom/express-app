@@ -46,7 +46,7 @@ app.use((req, res, next) => {
 });
 
 app.get("/", (_req, res) => {
-  res.send("💗주희 과장님 & 강차장님💗 HELLO EXPRESS!\n");
+  res.send("💗 HELLO EXPRESS!\n");
 });
 
 app.get("/hello", (_req, res) => {
