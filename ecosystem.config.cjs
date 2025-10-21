@@ -13,9 +13,10 @@ module.exports = {
       //   NODE_ENV: 'production', // 환경 변수 직접 설정 (현재는 .env 파일 사용)
       //   PORT: 80
       // },
-      kill_timeout: 5000, // 프로세스 종료 대기 시간 (밀리초)
-      wait_ready: true, // 앱이 준비될 때까지 대기 (listen 완료 확인)
-      listen_timeout: 10000, // listen 완료 대기 최대 시간 (밀리초)
+      kill_timeout: 5000, // 종료 시 워커에 줄 최대 정리 시간(ms)
+      wait_ready: true, // 앱이 준비될 때까지 대기 (listen 완료 확인) = app이 process.send('ready') 보낼 때까지 대기
+      listen_timeout: 10000, // 새 워커가 listen할 때까지 최대 대기(ms)
+      shutdown_with_message: true, // 🔥 pm2가 shutdown 메시지 전송(for pm2 gracefulReload)
     },
   ],
 };

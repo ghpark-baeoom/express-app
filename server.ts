@@ -5,12 +5,40 @@ const app = express();
 // Trust proxy for accurate IP addresses
 app.set("trust proxy", true);
 
-// Remove trailing slashes from URLs (except root "/")
+/**
+ * ✅ URL 끝의 슬래시("/")를 제거하는 Express 미들웨어 (루트 "/"는 예외)
+ *
+ * @description
+ * - 표준 URL API를 사용하여 URL 전체를 안전하게 파싱합니다.
+ * - 쿼리스트링(`?a=1&b=2`)은 그대로 유지합니다.
+ * - 인코딩된 문자(`%20`, `%2F` 등)나 다중 슬래시(`///`)도 정상적으로 처리합니다.
+ * - Nginx 등 리버스 프록시 뒤에서도 원본 요청 경로(`req.originalUrl`)를 기준으로 작동합니다.
+ * - URL 파싱 오류 발생 시, 다음 미들웨어로 안전하게 제어를 넘깁니다.
+ *
+ * @example
+ * // before:  https://example.com/hello/?a=1
+ * // after:   https://example.com/hello?a=1
+ *
+ * @param {import("express").Request} req - Express 요청 객체
+ * @param {import("express").Response} res - Express 응답 객체
+ * @param {import("express").NextFunction} next - 다음 미들웨어로 제어를 넘기는 함수
+ */
 app.use((req, res, next) => {
   if (req.path !== "/" && req.path.endsWith("/")) {
-    const query = req.url.slice(req.path.length);
-    const safePath = req.path.slice(0, -1);
-    res.redirect(301, safePath + query);
+    try {
+      // 표준 URL API를 사용해 원본 URL 전체(경로 + 쿼리)를 파싱
+      const base = `http://${req.headers.host || "localhost"}`;
+      const url = new URL(req.originalUrl, base);
+
+      // 경로 끝부분의 중복 슬래시들을 모두 제거
+      url.pathname = url.pathname.replace(/\/+$/, "");
+
+      // 쿼리스트링을 유지한 채로 301 리다이렉트 수행
+      res.redirect(301, url.pathname + url.search);
+    } catch (err) {
+      console.error("URL 파싱 중 오류 발생:", err);
+      next(); // 오류 발생 시 다음 미들웨어로 제어 이동
+    }
   } else {
     next();
   }
@@ -54,7 +82,7 @@ app.get("/hello", (_req, res) => {
 });
 
 app.get("/health", (_req, res) => {
-  res.status(200).send("💗 EXPRESS: HELATH CHECK SUCCESS\n");
+  res.status(200).send("💗 EXPRESS: HEALTH CHECK SUCCESS\n");
 });
 
 const PORT = process.env.PORT || 3000;
@@ -99,3 +127,8 @@ const gracefulShutdown = () => {
 
 process.on("SIGINT", gracefulShutdown);
 process.on("SIGTERM", gracefulShutdown);
+process.on("message", (msg: any) => {
+  if (msg === "shutdown") {
+    gracefulShutdown();
+  }
+});

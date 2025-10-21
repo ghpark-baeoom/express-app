@@ -19,7 +19,8 @@ npm run build
 
 # 4. Reload PM2 (zero-downtime)
 echo "♻️  Reloading PM2 processes..."
-pm2 reload ecosystem.config.cjs
+pm2 reload ecosystem.config.cjs --update-env
+# pm2 gracefulReload ecosystem.config.cjs --update-env (gracefulReload은 무중단 재시작)
 
 # 5. Show status
 echo "✅ Deployment complete!"
