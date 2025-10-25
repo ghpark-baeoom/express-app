@@ -3,7 +3,10 @@ import express from "express";
 const app = express();
 
 // Trust proxy for accurate IP addresses
-app.set("trust proxy", true);
+// app.set("trust proxy", true) 로 설정하면 Express는 **“모든 프록시를 신뢰”**하게 됩니다.
+// 즉, 숫자(1, 2, 3...)처럼 hop 개수를 지정하는 대신,
+// 들어온 X-Forwarded-For 체인 전체를 신뢰하고, 맨 왼쪽(첫 번째) IP를 원본 클라이언트 IP로 간주합니다.
+app.set("trust proxy", 1); // 수정 필요!
 
 /**
  * ✅ URL 끝의 슬래시("/")를 제거하는 Express 미들웨어 (루트 "/"는 예외)
