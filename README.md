@@ -36,7 +36,7 @@ express-app/
 │   ├── manual-deploy-docker.sh # Docker Compose 배포
 │   └── deploy-github-actions.sh # GitHub Actions용 ECR 배포
 ├── server.ts                   # 메인 서버 파일
-├── ecosystem.config.js         # PM2 설정 파일
+├── ecosystem.config.cjs        # PM2 설정 파일
 ├── docker-compose.yml          # Docker Compose 설정 (Blue-Green)
 ├── Dockerfile                  # Docker 이미지 빌드 설정
 ├── .env                        # 환경 변수
@@ -101,7 +101,7 @@ npm run build
 sudo setcap 'cap_net_bind_service=+ep' $(which node)
 
 # 6. PM2로 앱 실행
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 
 # 7. 로그 확인 (정상 작동 확인)
 pm2 logs
@@ -138,7 +138,7 @@ npm ci
 npm run build
 
 # 4. 무중단 재시작 (⭐ 핵심)
-pm2 reload ecosystem.config.js
+pm2 reload ecosystem.config.cjs
 ```
 
 ### 3. PM2 명령어
@@ -196,7 +196,7 @@ pm2 kill
 
 PM2 클러스터 모드와 `wait_ready` 시그널을 사용하여 안전한 무중단 배포를 구현합니다:
 
-### 1. PM2 설정 (ecosystem.config.js)
+### 1. PM2 설정 (ecosystem.config.cjs)
 ```javascript
 {
   instances: 2,           // 2개 인스턴스 실행
@@ -522,7 +522,7 @@ sudo setcap 'cap_net_bind_service=+ep' $(which node)
 echo "PORT=80" > .env
 
 # 3. PM2 시작 (sudo 불필요)
-pm2 start ecosystem.config.js
+pm2 start ecosystem.config.cjs
 
 # 확인
 pm2 logs
